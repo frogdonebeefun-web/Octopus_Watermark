@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>◈ Octo Watermark</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#04020e;
+    --panel:#06030f;
+    --skin-l:#8c28b4;
+    --gold:#ffe032;
+    --purple:#c896ff;
+    --rim:#8c1498;
+    --ink0:#500099;
+    --field-bg:#160830;
+    --border:#3c006e;
+    --btn:#4a0090;
+    --btn2:#2a0070;
+    --btn3:#003a6e;
+    --txt:#b4a01e;
+  }
+  html,body{width:100%;height:100%;background:var(--bg);overflow:hidden}
+  body{display:flex;font-family:'Courier Prime',Courier,monospace;color:var(--txt)}
+
+  /* ── Canvas side ── */
+  #canvas-wrap{position:relative;flex:none}
+  canvas{display:block}
+  #drop-overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;transition:background 0.3s;
+  }
+  #drop-overlay.active{background:rgba(80,0,153,0.18);pointer-events:all}
+  #drop-hint{
+    position:absolute;bottom:14px;left:0;right:0;text-align:center;
+    color:#3a0060;font-size:11px;letter-spacing:0.04em;pointer-events:none;
+  }
+
+  /* ── Panel ── */
+  #panel{
+    width:320px;flex:none;background:var(--panel);
+    display:flex;flex-direction:column;overflow-y:auto;
+    border-left:1px solid var(--border);
+  }
+  .p-inner{padding:0 14px;display:flex;flex-direction:column;gap:0}
+
+  .hdr{color:var(--purple);font-size:14px;font-weight:700;padding:14px 14px 2px;letter-spacing:0.05em}
+  .sub{color:var(--txt);font-size:11px;padding:0 14px 4px}
+  .divider{height:1px;background:var(--border);margin:6px 14px}
+
+  .step{color:var(--gold);font-size:13px;font-weight:700;padding:2px 14px}
+
+  label{color:var(--txt);font-size:11px;padding:4px 14px 1px;display:block}
+  input[type=text]{
+    width:calc(100% - 28px);margin:0 14px 4px;
+    background:var(--field-bg);border:none;border-radius:3px;
+    color:var(--gold);font-family:inherit;font-size:12px;
+    padding:6px 8px;outline:none;
+  }
+  input[type=text]:focus{box-shadow:0 0 0 1px var(--border)}
+
+  .row{display:flex;align-items:center;padding:4px 14px;gap:8px}
+  .fmt-label{color:var(--txt);font-size:11px}
+  .fmt-btn{
+    background:none;border:1px solid var(--border);border-radius:3px;
+    color:#888;font-family:inherit;font-size:12px;font-weight:700;
+    padding:3px 10px;cursor:pointer;transition:all 0.15s;
+  }
+  .fmt-btn.active{background:var(--field-bg);color:var(--gold);border-color:var(--purple)}
+
+  .dir-row{display:flex;align-items:center;padding:2px 14px;gap:6px}
+  .dir-lbl{
+    flex:1;color:#7a5aaa;font-size:9px;word-break:break-all;
+    background:none;border:none;font-family:inherit;cursor:default;
+  }
+  .icon-btn{
+    background:#2a0050;border:none;color:var(--gold);font-size:14px;
+    border-radius:3px;padding:4px 8px;cursor:pointer;
+  }
+  .icon-btn:hover{background:#3a0070}
+
+  .btn-row{display:flex;gap:6px;padding:6px 14px}
+  .big-btn{
+    flex:1;background:var(--btn);border:none;color:var(--gold);
+    font-family:inherit;font-size:13px;font-weight:700;
+    padding:10px 4px;border-radius:3px;cursor:pointer;transition:background 0.15s;
+  }
+  .big-btn:hover{background:#6a00c0}
+  .big-btn.btn2{background:var(--btn2)}
+  .big-btn.btn2:hover{background:#3a0090}
+  .big-btn.btn3{background:var(--btn3)}
+  .big-btn.btn3:hover{background:#005090}
+
+  #prog-wrap{padding:2px 14px 4px}
+  #prog{width:100%;height:8px;appearance:none;border-radius:4px;background:var(--field-bg)}
+  #prog::-webkit-progress-bar{background:var(--field-bg);border-radius:4px}
+  #prog::-webkit-progress-value{background:#c800e0;border-radius:4px;transition:width 0.3s}
+
+  #status{
+    color:var(--gold);font-size:11px;min-height:32px;
+    padding:2px 14px 6px;white-space:pre-wrap;line-height:1.4;
+  }
+
+  #reveal-box{
+    margin:4px 14px;background:var(--panel);border:1px solid var(--border);
+    border-radius:3px;color:var(--purple);font-family:inherit;font-size:10px;
+    padding:8px;min-height:90px;line-height:1.5;white-space:pre-wrap;
+  }
+
+  #copy-btn{
+    margin:2px 14px 12px;display:none;
+    background:#1a004a;border:none;color:var(--gold);
+    font-family:inherit;font-size:12px;font-weight:700;
+    padding:6px;border-radius:3px;cursor:pointer;width:calc(100% - 28px);
+  }
+  #copy-btn:hover{background:#2a0060}
+
+  /* ffmpeg loading notice */
+  #ffmpeg-status{
+    color:#555;font-size:10px;padding:2px 14px;
+  }
+
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="drop-overlay">
+  
+  </div>
+</div>
+
+<div id="panel">
+  <div class="hdr">◈  OCTO WATERMARK</div>
+  <div class="sub">embed copyright into audio files</div>
+  <div class="divider"></div>
+  <div class="step">① Fill in your info below</div>
+  <div class="step">② Pick format</div>
+  <div class="step">③ Drag file(s) onto the creature</div>
+  <div class="step">   — or pick file(s) below —</div>
+  <div class="divider"></div>
+
+  <label>Artist</label><input type="text" id="f-artist">
+  <label>Band</label><input type="text" id="f-band">
+  <label>Song</label><input type="text" id="f-song">
+  <label>Album</label><input type="text" id="f-album">
+  <label>Date</label><input type="text" id="f-date">
+  <label>© Holder</label><input type="text" id="f-copyright">
+  <label>© Code</label><input type="text" id="f-code">
+
+  <div class="divider"></div>
+
+  <div class="row">
+    <span class="fmt-label">Format:</span>
+    <button class="fmt-btn active" id="btn-aiff" onclick="setFmt('aiff')">AIFF</button>
+    <button class="fmt-btn" id="btn-mp3" onclick="setFmt('mp3')">MP3</button>
+  </div>
+
+  <div id="ffmpeg-status">Loading audio engine…</div>
+
+  <div class="btn-row">
+    <button class="big-btn" onclick="pickFile()">🎵 File</button>
+    <button class="big-btn btn2" onclick="pickFolder()">📁 Folder</button>
+  </div>
+
+  <div id="prog-wrap"><progress id="prog" value="0" max="1"></progress></div>
+  <div id="status">Ready</div>
+
+  <div class="divider"></div>
+  <div class="hdr" style="padding-top:6px">◈  BLOCKCHAIN TIMESTAMP</div>
+  <div class="sub">anchors file hash to Bitcoin via OriginStamp</div>
+  <label>OriginStamp API Key</label><input type="text" id="f-apikey" placeholder="paste your key here">
+  <div style="padding:0 14px 4px;font-size:10px;color:#555">free key at originstamp.com → API Keys</div>
+  <div id="ts-status" style="color:#4a8;font-size:10px;padding:2px 14px 6px;min-height:16px;white-space:pre-wrap"></div>
+
+  <div class="divider"></div>
+  <div class="hdr" style="padding-top:6px">◈  REVEAL WATERMARK</div>
+  <div class="sub">load a watermarked file to decode</div>
+
+  <div class="btn-row">
+    <button class="big-btn btn3" onclick="revealFile()">🔍 Load &amp; Reveal</button>
+  </div>
+  <div id="reveal-box"></div>
+  <button id="copy-btn" onclick="copyReveal()">📋 Copy</button>
+</div>
+
+<input type="file" id="file-picker" accept=".mp3,.aiff,.aif,.wav" multiple style="display:none">
+<input type="file" id="folder-picker" accept=".mp3,.aiff,.aif,.wav" multiple webkitdirectory style="display:none">
+<input type="file" id="reveal-picker" accept=".mp3,.aiff,.aif,.wav" style="display:none">
+
+<script type="module">
+// ── FFmpeg.wasm ──────────────────────────────────────────────────────────────
+import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+import { PDFDocument, rgb, StandardFonts } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js';
+import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js';
+
+let ffmpeg = null;
+let ffmpegReady = false;
+let selectedFmt = 'aiff';
+
+async function loadFFmpeg() {
+  try {
+    ffmpeg = new FFmpeg();
+    const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+    ffmpegReady = true;
+    document.getElementById('ffmpeg-status').textContent = '✓ Audio engine ready';
+    document.getElementById('ffmpeg-status').style.color = '#4a8';
+  } catch(e) {
+    document.getElementById('ffmpeg-status').textContent = '⚠ Audio engine offline — AIFF output only (no MP3)';
+    document.getElementById('ffmpeg-status').style.color = '#a84';
+  }
+}
+
+loadFFmpeg();
+
+// ── FSK Watermark ────────────────────────────────────────────────────────────
+const FSK_F0=18500, FSK_F1=19200, FSK_AMP=0.008, FSK_BAUD=50, FSK_SYNC=0xAA, SR=44100;
+
+function encodeFSK(payload, total) {
+  const data = new TextEncoder().encode(payload);
+  const chk = data.reduce((a,b)=>a+b,0) & 0xFF;
+  const lenLo = data.length & 0xFF, lenHi = (data.length >> 8) & 0xFF;
+  const pkt = [FSK_SYNC, FSK_SYNC, lenLo, lenHi, ...data, chk, FSK_SYNC, FSK_SYNC];
+  const bits = [];
+  for (const byte of pkt) for (let b=0;b<8;b++) bits.push((byte>>b)&1);
+  const spb = Math.floor(SR / FSK_BAUD);
+  const o0 = 2*Math.PI*FSK_F0/SR, o1 = 2*Math.PI*FSK_F1/SR;
+  const fsk = [];
+  for (const bit of bits) {
+    const om = bit ? o1 : o0, st = fsk.length;
+    for (let j=0; j<spb; j++) fsk.push(FSK_AMP * Math.sin(om*(st+j)));
+  }
+  if (fsk.length < total) {
+    const base = [...fsk];
+    while (fsk.length < total) fsk.push(...base);
+  }
+  return fsk.slice(0, total);
+}
+
+function decodeFSK(samples) {
+  const spb = Math.floor(SR/FSK_BAUD);
+  const o0 = 2*Math.PI*FSK_F0/SR, o1 = 2*Math.PI*FSK_F1/SR;
+  const bits = [];
+  for (let i=0; i<samples.length-spb; i+=spb) {
+    const seg = samples.slice(i, i+spb);
+    let p0s=0,p0c=0,p1s=0,p1c=0;
+    for (let j=0;j<spb;j++){
+      p0s+=seg[j]*Math.sin(o0*j); p0c+=seg[j]*Math.cos(o0*j);
+      p1s+=seg[j]*Math.sin(o1*j); p1c+=seg[j]*Math.cos(o1*j);
+    }
+    bits.push((p1s*p1s+p1c*p1c) > (p0s*p0s+p0c*p0c) ? 1 : 0);
+  }
+  const pat = [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1];
+  for (let start=0; start<bits.length-16; start++) {
+    if (bits.slice(start,start+16).join('')===pat.join('')) {
+      let s = start+16;
+      if (s+16 > bits.length) continue;
+      const lo = bits.slice(s,s+8).reduce((a,b,i)=>a+(b<<i),0);
+      const hi = bits.slice(s+8,s+16).reduce((a,b,i)=>a+(b<<i),0);
+      const dlen = lo|(hi<<8); s+=16;
+      if (dlen<=0||dlen>512||s+dlen*8+8>bits.length) continue;
+      const data = new Uint8Array(dlen);
+      for (let i=0;i<dlen;i++) data[i]=bits.slice(s+i*8,s+i*8+8).reduce((a,b,j)=>a+(b<<j),0);
+      s+=dlen*8;
+      const chk = bits.slice(s,s+8).reduce((a,b,i)=>a+(b<<i),0);
+      if (chk !== (data.reduce((a,b)=>a+b,0)&0xFF)) continue;
+      try { return JSON.parse(new TextDecoder().decode(data)); } catch{}
+    }
+  }
+  return null;
+}
+
+// ── Audio processing ─────────────────────────────────────────────────────────
+async function decodeAudioFile(file) {
+  const ctx = new OfflineAudioContext(1, 1, SR);
+  const buf = await file.arrayBuffer();
+  let decoded;
+  try {
+    const actx = new AudioContext();
+    decoded = await actx.decodeAudioData(buf.slice(0));
+    await actx.close();
+  } catch(e) {
+    throw new Error('Could not decode audio: ' + e.message);
+  }
+  // Resample to SR mono
+  const resampled = new OfflineAudioContext(1, Math.ceil(decoded.duration * SR), SR);
+  const src = resampled.createBufferSource();
+  src.buffer = decoded;
+  src.connect(resampled.destination);
+  src.start();
+  const rendered = await resampled.startRendering();
+  return rendered.getChannelData(0);
+}
+
+function writeWAV(samples) {
+  const len = samples.length;
+  const buf = new ArrayBuffer(44 + len*2);
+  const view = new DataView(buf);
+  const write = (o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+  write(0,'RIFF'); view.setUint32(4,36+len*2,true); write(8,'WAVE');
+  write(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,1,true); view.setUint32(24,SR,true);
+  view.setUint32(28,SR*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
+  write(36,'data'); view.setUint32(40,len*2,true);
+  for (let i=0;i<len;i++) {
+    const s = Math.max(-1,Math.min(1,samples[i]));
+    view.setInt16(44+i*2, s<0?s*32768:s*32767, true);
+  }
+  return buf;
+}
+
+function writeAIFF(samples) {
+  const n = samples.length;
+  // IEEE 754 80-bit extended for sample rate 44100
+  const sr80 = new Uint8Array([0x40,0x0e,0xac,0x44,0x00,0x00,0x00,0x00,0x00,0x00]);
+  const comm = new ArrayBuffer(26);
+  const cv = new DataView(comm);
+  cv.setInt16(0,1); cv.setUint32(2,n); cv.setInt16(6,16);
+  new Uint8Array(comm).set(sr80,8);
+  const ssnd = new ArrayBuffer(8 + n*2);
+  const sv = new DataView(ssnd);
+  for (let i=0;i<n;i++) {
+    const s=Math.max(-32768,Math.min(32767,Math.round(samples[i]*32767)));
+    sv.setInt16(8+i*2,s);
+  }
+  const commTag = enc('COMM'), ssndTag = enc('SSND');
+  const body = concat(
+    enc('AIFF'),
+    commTag, u32be(comm.byteLength), comm,
+    ssndTag, u32be(ssnd.byteLength), ssnd
+  );
+  return concat(enc('FORM'), u32be(body.byteLength), body);
+}
+
+function enc(s){ const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
+function u32be(n){ const a=new Uint8Array(4); new DataView(a.buffer).setUint32(0,n); return a; }
+function concat(...parts){
+  const total = parts.reduce((a,p)=>a+(p.byteLength||p.length),0);
+  const out = new Uint8Array(total); let off=0;
+  for(const p of parts){ const a=p instanceof ArrayBuffer?new Uint8Array(p):(p.buffer?p:new Uint8Array(p)); out.set(a,off); off+=a.length; }
+  return out.buffer;
+}
+
+async function wavToMp3(wavBuf, fname) {
+  if (!ffmpegReady) throw new Error('MP3 encoder not available');
+  const inName = 'input_'+Date.now()+'.wav';
+  const outName = fname.replace(/\.[^.]+$/,'_wm.mp3');
+  await ffmpeg.writeFile(inName, new Uint8Array(wavBuf));
+  await ffmpeg.exec(['-y','-i',inName,'-codec:a','libmp3lame','-q:a','2',
+                     '-map_metadata','-1',outName]);
+  const data = await ffmpeg.readFile(outName);
+  await ffmpeg.deleteFile(inName);
+  await ffmpeg.deleteFile(outName);
+  return data.buffer;
+}
+
+function downloadBlob(buf, filename, mime) {
+  const blob = new Blob([buf], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+// ── SHA-256 helper ──────────────────────────────────────────────────────────
+async function sha256hex(buf) {
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── OriginStamp submission ───────────────────────────────────────────────────
+async function submitToOriginStamp(hash) {
+  const apiKey = document.getElementById('f-apikey').value.trim();
+  if (!apiKey) return null;
+  try {
+    const res = await fetch('https://api.originstamp.com/v1/timestamp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': apiKey },
+      body: JSON.stringify({ hash })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return data;
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+// ── Write AIFF with metadata chunks ─────────────────────────────────────────
+function writeAIFFWithMeta(samples, metaObj) {
+  const n = samples.length;
+  const sr80 = new Uint8Array([0x40,0x0e,0xac,0x44,0x00,0x00,0x00,0x00,0x00,0x00]);
+  const comm = new ArrayBuffer(26);
+  const cv = new DataView(comm);
+  cv.setInt16(0,1); cv.setUint32(2,n); cv.setInt16(6,16);
+  new Uint8Array(comm).set(sr80,8);
+  const ssnd = new ArrayBuffer(8 + n*2);
+  const sv = new DataView(ssnd);
+  for (let i=0;i<n;i++) {
+    const s=Math.max(-32768,Math.min(32767,Math.round(samples[i]*32767)));
+    sv.setInt16(8+i*2,s);
+  }
+  // ANNO chunk with metadata JSON
+  const annoText = JSON.stringify(metaObj);
+  const annoBytes = new TextEncoder().encode(annoText);
+  const annoPad = annoBytes.length % 2 !== 0 ? new Uint8Array(1) : new Uint8Array(0);
+  // NAME chunk
+  const nameText = metaObj.sn || metaObj.ar || 'Unknown';
+  const nameBytes = new TextEncoder().encode(nameText);
+  const namePad = nameBytes.length % 2 !== 0 ? new Uint8Array(1) : new Uint8Array(0);
+  // AUTH chunk
+  const authText = metaObj.ar || metaObj.bn || '';
+  const authBytes = new TextEncoder().encode(authText);
+  const authPad = authBytes.length % 2 !== 0 ? new Uint8Array(1) : new Uint8Array(0);
+  // (c)  chunk
+  const cpText = '© ' + (metaObj['©'] || metaObj.ar || '');
+  const cpBytes = new TextEncoder().encode(cpText);
+  const cpPad = cpBytes.length % 2 !== 0 ? new Uint8Array(1) : new Uint8Array(0);
+
+  const body = concat(
+    enc('AIFF'),
+    enc('COMM'), u32be(comm.byteLength), comm,
+    enc('NAME'), u32be(nameBytes.length), nameBytes, namePad,
+    enc('AUTH'), u32be(authBytes.length), authBytes, authPad,
+    enc('(c) '), u32be(cpBytes.length), cpBytes, cpPad,
+    enc('ANNO'), u32be(annoBytes.length), annoBytes, annoPad,
+    enc('SSND'), u32be(ssnd.byteLength), ssnd
+  );
+  return concat(enc('FORM'), u32be(body.byteLength), body);
+}
+
+function getPayload() {
+  return JSON.stringify({
+    ar: document.getElementById('f-artist').value,
+    bn: document.getElementById('f-band').value,
+    sn: document.getElementById('f-song').value,
+    al: document.getElementById('f-album').value,
+    dt: document.getElementById('f-date').value,
+    '©': document.getElementById('f-copyright').value,
+    id: document.getElementById('f-code').value,
+  }, null, 0).replace(/,"[^"]+":""/g,'').replace(/"[^"]+":"",?/g,'').replace(/,}/,'}');
+}
+
+let processing = false;
+
+async function processFiles(files) {
+  if (processing) { setStatus('Still processing — wait'); return; }
+  const audioFiles = Array.from(files).filter(f=>
+    /\.(mp3|aiff?|wav)$/i.test(f.name));
+  if (!audioFiles.length) { setStatus('No audio files found'); return; }
+
+  processing = true;
+  triggerSwallow();
+  const fmt = selectedFmt;
+  const nowISO = new Date().toISOString();
+  const payloadBase = getPayload();
+  setStatus(`Swallowed ${audioFiles.length} file(s)`);
+  setProgress(0.05);
+  document.getElementById('ts-status').textContent = '';
+
+  for (let i=0; i<audioFiles.length; i++) {
+    const f = audioFiles[i];
+    const base = f.name.replace(/\.[^.]+$/,'');
+    setStatus(`[${i+1}/${audioFiles.length}] ${f.name}\nReading…`);
+    setProgress((i+0.2)/audioFiles.length);
+    try {
+      let tsResult = null;
+      const origBuf = await f.arrayBuffer();
+      const origHash = await sha256hex(origBuf);
+      let meta = {};
+      try { meta = JSON.parse(payloadBase); } catch(e) {}
+      meta.ts = nowISO;
+      meta.sha = origHash;
+      const payload = JSON.stringify(meta);
+
+      const pcm = await decodeAudioFile(f);
+      setStatus(`[${i+1}/${audioFiles.length}] ${f.name}\nEncoding…`);
+      setProgress((i+0.5)/audioFiles.length);
+      const fsk = encodeFSK(payload, pcm.length);
+      const mixed = new Float32Array(pcm.length);
+      for (let j=0;j<pcm.length;j++) mixed[j] = pcm[j] + fsk[j];
+      setStatus(`[${i+1}/${audioFiles.length}] ${f.name}\nSaving…`);
+      setProgress((i+0.8)/audioFiles.length);
+      const wavBuf = writeWAV(mixed);
+      if (fmt==='mp3') {
+        const mp3Buf = await wavToMp3(wavBuf, f.name);
+        downloadBlob(mp3Buf, base+'_OW.mp3','audio/mpeg');
+      } else {
+        const aiffBuf = writeAIFFWithMeta(mixed, meta);
+        downloadBlob(aiffBuf, base+'_OW.aiff','audio/aiff');
+      }
+
+      // Submit to OriginStamp
+      const apiKey = document.getElementById('f-apikey').value.trim();
+      if (apiKey) {
+        setStatus(`[${i+1}/${audioFiles.length}] ${f.name}\nSubmitting to blockchain…`);
+        document.getElementById('ts-status').textContent = '\u23f3 Submitting to OriginStamp\u2026';
+        const tsResult = await submitToOriginStamp(origHash);
+        if (tsResult && !tsResult.error) {
+          const currencies = tsResult.trees ? tsResult.trees.map(t=>t.currency).join(' + ') : 'BTC';
+          document.getElementById('ts-status').style.color='#4a8';
+          document.getElementById('ts-status').textContent =
+            '\u2713 Anchored to ' + currencies + '\nHash: ' + origHash.slice(0,20) + '\u2026\nTime: ' + nowISO + '\nVerify: verify.originstamp.com';
+        } else {
+          document.getElementById('ts-status').style.color='#a84';
+          document.getElementById('ts-status').textContent =
+            '\u26a0 OriginStamp: ' + (tsResult && tsResult.error ? tsResult.error : 'error') + '\nHash saved in file metadata.';
+        }
+      }
+      // Generate certificate PDF
+      await generateCertificate(f.name, meta, origHash, tsResult);
+
+      setStatus(`✓ [${i+1}/${audioFiles.length}] ${f.name}`);
+      setProgress((i+1)/audioFiles.length);
+    } catch(e) {
+      setStatus(`✗ ${f.name}\n${e.message}`);
+    }
+  }
+  setStatus(`Done — ${audioFiles.length} file(s) watermarked ✓`);
+  setProgress(1);
+  processing = false;
+}
+
+async function revealFromFile(file) {
+  document.getElementById('reveal-box').textContent = 'Decoding…';
+  document.getElementById('copy-btn').style.display='none';
+  try {
+    const pcm = await decodeAudioFile(file);
+    const result = decodeFSK(pcm);
+    if (!result) { document.getElementById('reveal-box').textContent='❌ No watermark found.'; return; }
+    const LABELS={ar:'Artist',bn:'Band',sn:'Song',al:'Album',dt:'Date','©':'© Holder',id:'© Code'};
+    const lines = Object.entries(result).filter(([,v])=>v).map(([k,v])=>`${LABELS[k]||k}: ${v}`).join('\n');
+    document.getElementById('reveal-box').textContent = lines;
+    document.getElementById('copy-btn').style.display='block';
+  } catch(e) {
+    document.getElementById('reveal-box').textContent='❌ '+e.message;
+  }
+}
+
+// ── Certificate PDF generator ────────────────────────────────────────────────
+async function generateCertificate(fileName, meta, hash, tsResult) {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([612, 792]); // Letter
+  const { width, height } = page.getSize();
+  const fontMono = await pdfDoc.embedFont(StandardFonts.Courier);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontReg  = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const BG   = rgb(0.016, 0.008, 0.055);
+  const GOLD = rgb(1.0,  0.878, 0.196);
+  const PURP = rgb(0.784, 0.588, 1.0);
+  const WHT  = rgb(1,1,1);
+  const DIM  = rgb(0.6, 0.5, 0.8);
+  const GRN  = rgb(0.2, 0.8, 0.4);
+
+  // Background
+  page.drawRectangle({ x:0, y:0, width, height, color:BG });
+
+  // Top accent bar
+  page.drawRectangle({ x:0, y:height-6, width, height:6, color:PURP });
+  page.drawRectangle({ x:0, y:height-9, width, height:3, color:GOLD });
+
+  // Title
+  page.drawText('OCTO WATERMARK', { x:40, y:height-50, size:22, font:fontBold, color:GOLD });
+  page.drawText('COPYRIGHT CERTIFICATE', { x:40, y:height-70, size:11, font:fontReg, color:PURP });
+
+  // Divider
+  page.drawLine({ start:{x:40,y:height-82}, end:{x:572,y:height-82}, thickness:1, color:PURP, opacity:0.4 });
+
+  // File info section
+  let y = height - 105;
+  const section = (title) => {
+    page.drawText(title, { x:40, y, size:9, font:fontBold, color:PURP });
+    y -= 4;
+    page.drawLine({ start:{x:40,y}, end:{x:572,y}, thickness:0.5, color:PURP, opacity:0.25 });
+    y -= 14;
+  };
+  const row = (label, value, valueColor) => {
+    page.drawText(label, { x:40, y, size:8, font:fontBold, color:DIM });
+    page.drawText(String(value||'—'), { x:160, y, size:8, font:fontMono, color:valueColor||WHT });
+    y -= 13;
+  };
+
+  section('FILE INFORMATION');
+  row('File Name', fileName);
+  row('Processed', meta.ts || new Date().toISOString());
+  y -= 4;
+
+  section('COPYRIGHT DETAILS');
+  if (meta.ar) row('Artist', meta.ar);
+  if (meta.bn) row('Band', meta.bn);
+  if (meta.sn) row('Song', meta.sn);
+  if (meta.al) row('Album', meta.al);
+  if (meta.dt) row('Date', meta.dt);
+  if (meta['©']) row('© Holder', meta['©']);
+  if (meta.id) row('© Code', meta.id);
+  y -= 4;
+
+  section('CRYPTOGRAPHIC PROOF');
+  row('SHA-256 (original)', '');
+  // Hash on its own line - split into two lines for readability
+  const h1 = hash.slice(0,32), h2 = hash.slice(32);
+  page.drawText(h1, { x:50, y, size:7.5, font:fontMono, color:GOLD });
+  y -= 11;
+  page.drawText(h2, { x:50, y, size:7.5, font:fontMono, color:GOLD });
+  y -= 16;
+
+  section('BLOCKCHAIN TIMESTAMP');
+  if (tsResult && !tsResult.error) {
+    const currencies = tsResult.trees ? tsResult.trees.map(t=>t.currency).join(' + ') : 'BTC';
+    row('Status', '✓ SUBMITTED TO BLOCKCHAIN', GRN);
+    row('Networks', currencies, GRN);
+    row('Submitted', new Date().toISOString());
+    row('Verify at', 'verify.originstamp.com');
+    y -= 4;
+    page.drawText('Note: Bitcoin confirmation takes up to 24h. Keep this certificate', { x:40, y, size:7, font:fontReg, color:DIM });
+    y -= 10;
+    page.drawText('and your original file as legal proof of creation date.', { x:40, y, size:7, font:fontReg, color:DIM });
+    y -= 14;
+  } else {
+    row('Status', 'No API key provided — hash embedded in file only', DIM);
+    y -= 4;
+    page.drawText('To obtain blockchain proof, add your OriginStamp API key and reprocess.', { x:40, y, size:7, font:fontReg, color:DIM });
+    y -= 14;
+  }
+
+  section('VERIFICATION INSTRUCTIONS');
+  const steps = [
+    '1. Keep this certificate and your ORIGINAL unmodified audio file.',
+    '2. Go to verify.originstamp.com and upload your original file.',
+    '3. The SHA-256 hash above should match — proving it existed at the timestamp.',
+    '4. The blockchain entry is permanent and cannot be altered by anyone.',
+    '5. Present this certificate + original file as evidence of copyright ownership.',
+  ];
+  for (const s of steps) {
+    page.drawText(s, { x:40, y, size:7.5, font:fontReg, color:WHT });
+    y -= 11;
+  }
+
+  // Bottom bar
+  page.drawRectangle({ x:0, y:0, width, height:36, color:rgb(0.03,0.01,0.08) });
+  page.drawLine({ start:{x:0,y:36}, end:{x:612,y:36}, thickness:1, color:PURP, opacity:0.3 });
+  page.drawText('Generated by Octo Watermark  ·  octopusmusic.com  ·  ' + new Date().toISOString(),
+    { x:40, y:13, size:7, font:fontReg, color:DIM });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type:'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=fileName.replace(/\.[^.]+$/,'')+'_OW_certificate.pdf'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+function setStatus(t){ document.getElementById('status').textContent=t; }
+function setProgress(v){ document.getElementById('prog').value=v; }
+
+// ── UI wiring ────────────────────────────────────────────────────────────────
+window.setFmt = (f) => {
+  selectedFmt=f;
+  document.getElementById('btn-aiff').classList.toggle('active',f==='aiff');
+  document.getElementById('btn-mp3').classList.toggle('active',f==='mp3');
+};
+window.pickFile = ()=>document.getElementById('file-picker').click();
+window.pickFolder = ()=>document.getElementById('folder-picker').click();
+window.revealFile = ()=>document.getElementById('reveal-picker').click();
+window.copyReveal = ()=>{
+  const t=document.getElementById('reveal-box').textContent;
+  navigator.clipboard.writeText(t).then(()=>{
+    const b=document.getElementById('copy-btn');
+    b.textContent='✓ Copied!'; setTimeout(()=>b.textContent='📋 Copy',1500);
+  });
+};
+
+document.getElementById('file-picker').onchange=e=>processFiles(e.target.files);
+document.getElementById('folder-picker').onchange=e=>processFiles(e.target.files);
+document.getElementById('reveal-picker').onchange=e=>e.target.files[0]&&revealFromFile(e.target.files[0]);
+
+// default date
+document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+// ── Drag and Drop on canvas ──────────────────────────────────────────────────
+const dropOverlay = document.getElementById('drop-overlay');
+let dragOverCanvas = false;
+
+document.addEventListener('dragover', e=>{ e.preventDefault(); });
+document.addEventListener('drop', e=>{ e.preventDefault(); });
+
+const canvasEl = document.getElementById('c');
+canvasEl.addEventListener('dragenter', e=>{ e.preventDefault(); dragOverCanvas=true; octo.hover=true; dropOverlay.classList.add('active'); });
+canvasEl.addEventListener('dragleave', e=>{ dragOverCanvas=false; octo.hover=false; dropOverlay.classList.remove('active'); });
+canvasEl.addEventListener('dragover', e=>{ e.preventDefault(); });
+canvasEl.addEventListener('drop', e=>{
+  e.preventDefault(); dragOverCanvas=false; octo.hover=false;
+  dropOverlay.classList.remove('active');
+  if(e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
+});
+
+// ── Canvas Octopus ───────────────────────────────────────────────────────────
+const W=900, H=700;
+canvasEl.width=W; canvasEl.height=H;
+document.getElementById('canvas-wrap').style.width=W+'px';
+const ctx2d = canvasEl.getContext('2d');
+
+const hx=(r,g,b)=>`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+const BG='#04020e', SKIN_L=hx(140,40,180), SKIN_B=hx(90,20,130), SKIN_D=hx(25,5,50);
+const SUK_RIM=hx(140,20,160), SUK_IN=hx(200,20,80);
+const INK_COLS=[hx(80,0,160),hx(160,0,220),hx(255,0,120),hx(200,80,255),hx(255,180,0)];
+const EYE_W=hx(245,238,225), PUPIL=hx(8,0,20), GOLD=hx(190,145,30);
+const IRIS_C=[hx(110,75,20),hx(130,95,15),hx(85,110,25),hx(60,130,40),hx(45,150,55)];
+
+const MLIGHT=(()=>{const v=[1.0,0.1,-0.6];const n=Math.hypot(...v);return v.map(x=>x/n);})();
+const _cp=Math.cos(Math.PI/2),_sp=Math.sin(Math.PI/2);
+const _pr=(x,y,z)=>[x, y*_cp-z*_sp, y*_sp+z*_cp];
+
+function tmesh(R1,R2,rows=12,cols=24){
+  const V=[],N=[];
+  for(let r=0;r<rows;r++){
+    const th=(r/rows)*2*Math.PI,ct=Math.cos(th),st=Math.sin(th);
+    const rv=[],rn=[];
+    for(let c=0;c<cols;c++){
+      const ph=(c/cols)*2*Math.PI,cp2=Math.cos(ph),sp2=Math.sin(ph);
+      rv.push(_pr((R2+R1*ct)*cp2, R1*st, (R2+R1*ct)*sp2));
+      rn.push(_pr(ct*cp2, st, ct*sp2));
+    }
+    V.push(rv);N.push(rn);
+  }
+  return [V,N];
+}
+
+function faceNorm(p0,p1,p2){
+  const v1=[p1[0]-p0[0],p1[1]-p0[1],p1[2]-p0[2]];
+  const v2=[p2[0]-p0[0],p2[1]-p0[1],p2[2]-p0[2]];
+  const nx=v1[1]*v2[2]-v1[2]*v2[1],ny=v1[2]*v2[0]-v1[0]*v2[2],nz=v1[0]*v2[1]-v1[1]*v2[0];
+  const n=Math.sqrt(nx*nx+ny*ny+nz*nz);
+  return n>0?[nx/n,ny/n,nz/n]:[0,1,0];
+}
+
+function tpolys(V,N,ctype,rows=12,cols=24){
+  const Q=[];
+  for(let r=0;r<rows;r++){
+    const nr2=(r+1)%rows;
+    for(let c=0;c<cols;c++){
+      const nc=(c+1)%cols;
+      const p0=V[r][c],p1=V[nr2][c],p2=V[nr2][nc],p3=V[r][nc];
+      const az=(p0[2]+p1[2]+p2[2]+p3[2])/4;
+      const n0=N[r][c],n1=N[nr2][c],n2=N[nr2][nc],n3=N[r][nc];
+      let ax=(n0[0]+n1[0]+n2[0]+n3[0])/4;
+      let ay=(n0[1]+n1[1]+n2[1]+n3[1])/4;
+      let aw=(n0[2]+n1[2]+n2[2]+n3[2])/4;
+      const nn=Math.sqrt(ax*ax+ay*ay+aw*aw);
+      if(nn>0){ax/=nn;ay/=nn;aw/=nn;}
+      const d=ax*MLIGHT[0]+ay*MLIGHT[1]+aw*MLIGHT[2];
+      const it=Math.pow((d+1)/2, 2.5);
+      let col;
+      if(ctype==='red'){
+        if(it>0.85){const f=(it-0.85)/0.15;col=hx(255,~~(40+160*f),~~(40+160*f));}
+        else col=hx(~~(12+243*(it/0.85)),~~(2+38*(it/0.85)),~~(2+38*(it/0.85)));
+      } else {
+        if(it>0.85){const f=(it-0.85)/0.15;col=hx(255,~~(160+95*f),~~(200+55*f));}
+        else col=hx(~~(30+225*(it/0.85)),~~(5+135*(it/0.85)),~~(15+165*(it/0.85)));
+      }
+      Q.push([az,[p0,p1,p2,p3],col]);
+    }
+  }
+  return Q;
+}
+
+function teethPolys(rot){
+  const R1r=20,R2r=140,R1p=10,R2p=R2r-R1r-R1p,pi_=R2p-R1p;
+  const rng=mulberry32(2026); const Q=[];
+  for(let i=0;i<24;i++){
+    const ang=(i/24)*2*Math.PI+rot,tt=rng()*3+10;
+    const wr=rng()*0.007+0.045,wt=rng()*0.008+0.082;
+    const rr=pi_+R1p*0.5,rt2=rr-18;
+    const v=(r,a,y)=>_pr(r*Math.cos(a),y,r*Math.sin(a));
+    const v0=v(rr,ang-wr,-tt),v1=v(rr,ang+wr,-tt),v2=v(rt2,ang+wt,-tt),v3=v(rt2,ang-wt,-tt);
+    const v4=v(rr,ang-wr,tt),v5=v(rr,ang+wr,tt),v6=v(rt2,ang+wt,tt),v7=v(rt2,ang-wt,tt);
+    for(const face of [[v3,v2,v1,v0],[v4,v5,v6,v7],[v0,v1,v5,v4],[v2,v3,v7,v6],[v1,v2,v6,v5],[v3,v0,v4,v7]]){
+      const az=face.reduce((a,p)=>a+p[2],0)/4;
+      const [nx,ny,nz]=faceNorm(face[0],face[1],face[2]);
+      const d=nx*MLIGHT[0]+ny*MLIGHT[1]+nz*MLIGHT[2],it=(d+1)/2;
+      const col=hx(Math.min(255,~~(195+60*it)),Math.min(255,~~(190+65*it)),Math.min(255,~~(155+90*it)));
+      Q.push([az,face,col]);
+    }
+  }
+  return Q;
+}
+
+function mulberry32(a){
+  return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t^=t+Math.imul(t^t>>>7,61|t);return((t^t>>>14)>>>0)/4294967296;};
+}
+
+const [VR,NR]=tmesh(20,140);
+const [VP,NP]=tmesh(10,110);
+
+function proj(x,y,z,cx,cy,ay,ax=10){
+  const ry=ay*Math.PI/180;
+  let xr=x*Math.cos(ry)-z*Math.sin(ry),zr=x*Math.sin(ry)+z*Math.cos(ry);
+  const rx=ax*Math.PI/180;
+  let yr=y*Math.cos(rx)-zr*Math.sin(rx),zf=y*Math.sin(rx)+zr*Math.cos(rx);
+  const cd=500,pf=cd/(cd+zf+0.001);
+  return [cx+xr*pf, cy+yr*pf, zf];
+}
+
+function lerpCol(c1,c2,t){
+  const p=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  const a=p(c1),b=p(c2);
+  return hx(...a.map((v,i)=>~~(v*(1-t)+b[i]*t)));
+}
+
+function shadeCol(hcol,f){
+  const r=parseInt(hcol.slice(1,3),16),g=parseInt(hcol.slice(3,5),16),b=parseInt(hcol.slice(5,7),16);
+  return hx(Math.min(255,~~(r*f)),Math.min(255,~~(g*f)),Math.min(255,~~(b*f)));
+}
+
+function drawMouthTorus(cx,cy,scale,rot){
+  if(scale<0.01)return;
+  const hole_r=~~(100*scale*1.3);
+  ctx2d.beginPath();ctx2d.ellipse(cx,cy,hole_r,hole_r,0,0,Math.PI*2);
+  ctx2d.fillStyle=BG;ctx2d.fill();
+  const polys=[...tpolys(VR,NR,'red'),...tpolys(VP,NP,'pink'),...teethPolys(rot)];
+  polys.sort((a,b)=>b[0]-a[0]);
+  const dist=400;
+  for(const [,pts,col] of polys){
+    const spts=pts.map(p=>{
+      const px=p[0]*scale,py=p[1]*scale,pz=p[2]*scale;
+      const ooZ=1/(pz+dist);
+      return [cx+1.3*dist*px*ooZ, cy+1.3*dist*py*ooZ];
+    });
+    ctx2d.beginPath();ctx2d.moveTo(spts[0][0],spts[0][1]);
+    for(let i=1;i<spts.length;i++)ctx2d.lineTo(spts[i][0],spts[i][1]);
+    ctx2d.closePath();ctx2d.fillStyle=col;ctx2d.fill();
+  }
+}
+
+// Octo state
+const octo = {
+  t:0, mouthRatio:0, sway:0, ink:[], hover:false,
+  cx:W/2, cy:H/2+20, mouthRot:0, swallowBurst:false
+};
+
+function triggerSwallow(){
+  octo.swallowBurst=true;
+  const [msx,msy]=proj(0,0,0,octo.cx,octo.cy,octo.sway);
+  for(let i=0;i<120;i++){
+    const a=Math.random()*Math.PI*2,spd=Math.random()*9+3;
+    octo.ink.push([msx,msy,Math.cos(a)*spd,Math.sin(a)*spd-Math.random()*3-1,
+                   Math.random()*0.5+0.5,Math.random()*10+4,INK_COLS[~~(Math.random()*INK_COLS.length)]]);
+  }
+  octo.swallowBurst=false;
+}
+
+canvasEl.addEventListener('mousemove',e=>{
+  const rect=canvasEl.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const [msx,msy]=proj(0,0,0,octo.cx,octo.cy,octo.sway);
+  octo.hover=Math.hypot(mx-msx,my-msy)<200;
+});
+canvasEl.addEventListener('mouseleave',()=>octo.hover=false);
+
+function tick(){
+  octo.t+=0.03;
+  octo.sway=Math.sin(octo.t*0.6)*20;
+  const target=octo.hover?1:0, spd=octo.hover?0.017:0.025;
+  octo.mouthRatio+=(target-octo.mouthRatio)*spd;
+  octo.mouthRot=(octo.mouthRot+0.015)%(Math.PI*2);
+
+  // ink
+  octo.ink=octo.ink.filter(p=>{
+    p[0]+=p[2];p[1]+=p[3];p[3]+=0.2;p[2]*=0.95;p[4]-=0.02;p[5]*=0.965;
+    return p[4]>0&&p[5]>0.5;
+  });
+
+  draw();
+  requestAnimationFrame(tick);
+}
+
+function draw(){
+  const c=ctx2d,{t,sway:sw,cx,cy,mouthRatio:mo,mouthRot}=octo;
+  c.fillStyle=BG;c.fillRect(0,0,W,H);
+  // grid
+  c.strokeStyle='#0c0418';c.lineWidth=1;
+  for(let gx=0;gx<W;gx+=55){c.beginPath();c.moveTo(gx,0);c.lineTo(gx,H);c.stroke();}
+  for(let gy=0;gy<H;gy+=55){c.beginPath();c.moveTo(0,gy);c.lineTo(W,gy);c.stroke();}
+
+  const items=[];
+
+  // body rings
+  for(let stack=-10;stack<=10;stack++){
+    const sf=stack/10;
+    if(Math.abs(sf)<0.18&&mo>0.25)continue;
+    const sw_r=Math.cos(sf*Math.PI*0.5),br=150*sw_r;
+    let by=stack*18;
+    if(stack<=0)by-=mo*60*sw_r; else by+=mo*60*sw_r;
+    for(let i=0;i<16;i++){
+      const a=(i/16)*Math.PI*2;
+      const r=br*(1+0.12*Math.sin(t*1.8+a*3+stack*0.4));
+      const px=Math.cos(a)*r,pz=Math.sin(a)*r;
+      const [sx,sy,sz]=proj(px,by,pz,cx,cy,sw);
+      if(sz>0)continue;
+      const df=Math.max(0,Math.min(1,(sz+350)/700));
+      const col=lerpCol(SKIN_L,SKIN_D,df);
+      const nr=Math.max(4,~~(20*(450/(450+sz)))),ir=~~(nr*0.52);
+      items.push([sz,()=>{
+        c.beginPath();c.ellipse(sx,sy,nr,nr,0,0,Math.PI*2);c.fillStyle=SUK_RIM;c.fill();
+        c.beginPath();c.arc(sx,sy,nr,Math.PI*2/3,Math.PI*4/3);c.fillStyle=shadeCol(SUK_RIM,1.3);c.fill();
+        c.beginPath();c.ellipse(sx,sy,ir,ir,0,0,Math.PI*2);c.fillStyle=SUK_IN;c.fill();
+        const pit=Math.max(1,~~(ir/2));
+        c.beginPath();c.ellipse(sx,sy,pit,pit,0,0,Math.PI*2);c.fillStyle=shadeCol(SUK_IN,0.4);c.fill();
+      }]);
+    }
+  }
+
+  // tentacles
+  const hovering=mo>0.05;const sucker_zs=[];
+  for(let i=0;i<8;i++){
+    const ba=(i/8)*Math.PI*2+sw*Math.PI/180;
+    const bx=Math.cos(ba)*90,bz=Math.sin(ba)*90;
+    let px2=bx,py2=120+mo*40,pz2=bz;
+    for(let seg=0;seg<11;seg++){
+      const sf2=seg/11,wv=Math.sin(t*2.4-sf2*5.2+i*0.9)*28;
+      const cx2=px2+Math.cos(ba)*sf2*55+wv*Math.cos(ba+Math.PI/2);
+      const cy2=py2+sf2*40;
+      const cz2=pz2+Math.sin(ba)*sf2*55+wv*Math.sin(ba+Math.PI/2);
+      const [,,p2sz]=proj(cx2,cy2,cz2,cx,cy,sw);
+      const is_back=p2sz>0;
+      if(hovering&&is_back){px2=cx2;py2=cy2;pz2=cz2;continue;}
+      const [p1sx,p1sy]=proj(px2,py2,pz2,cx,cy,sw);
+      const [p2sx,p2sy]=proj(cx2,cy2,cz2,cx,cy,sw);
+      const tw=Math.max(2,~~((22*(1-sf2*0.65))*(450/(450+p2sz))));
+      const df2=Math.max(0,Math.min(1,(p2sz+350)/700));
+      const dark=is_back?Math.max(0.05,0.22-p2sz*0.0008):1.0;
+      const tcol=shadeCol(lerpCol(SKIN_B,SKIN_D,df2),dark);
+      const rim=shadeCol(SUK_RIM,dark),inn=shadeCol(SUK_IN,dark);
+      const _p1sx=p1sx,_p1sy=p1sy,_p2sx=p2sx,_p2sy=p2sy,_tw=tw,_seg=seg,_rim=rim,_inn=inn;
+      items.push([p2sz,()=>{
+        c.beginPath();c.moveTo(_p1sx,_p1sy);c.lineTo(_p2sx,_p2sy);
+        c.strokeStyle=tcol;c.lineWidth=_tw;c.lineCap='round';c.stroke();
+        if(_seg%2===0){
+          const sr2=Math.max(2,~~(_tw*0.9));
+          c.beginPath();c.ellipse(_p2sx,_p2sy,sr2,sr2,0,0,Math.PI*2);c.fillStyle=_rim;c.fill();
+          const ir3=Math.max(1,~~(sr2*0.5));
+          c.beginPath();c.ellipse(_p2sx,_p2sy,ir3,ir3,0,0,Math.PI*2);c.fillStyle=_inn;c.fill();
+        }
+      }]);
+      if(seg%2===0&&!is_back)sucker_zs.push(p2sz);
+      px2=cx2;py2=cy2;pz2=cz2;
+    }
+  }
+
+  // eye
+  const [esx,esy,esz]=proj(0,-10,0,cx,cy,sw);
+  const e_r=~~(Math.max(4,70*(1-mo*0.85))*(450/(450+esz+0.001)));
+  const ir2=~~(e_r*0.70),pr=~~(e_r*0.17),ph=~~(e_r*0.46);
+  if(mo<0.45&&e_r>3){
+    items.push([esz-10,()=>{
+      c.beginPath();c.ellipse(esx,esy,e_r,e_r,0,0,Math.PI*2);c.fillStyle=EYE_W;c.fill();
+      c.beginPath();c.ellipse(esx,esy,ir2+2,ir2+2,0,0,Math.PI*2);c.fillStyle='#19120c';c.fill();
+      IRIS_C.forEach((ic,ri)=>{
+        const r2=~~(ir2*(1-ri*0.14));
+        c.beginPath();c.ellipse(esx,esy,r2,r2,0,0,Math.PI*2);c.fillStyle=ic;c.fill();
+      });
+      for(let fi=0;fi<32;fi++){
+        const fa=Math.PI*2*fi/32;
+        const fc=IRIS_C[[1,3,3,1,1,3][fi%6]]||GOLD;
+        c.beginPath();c.moveTo(esx+Math.cos(fa)*ir2*0.45,esy+Math.sin(fa)*ir2*0.45);
+        c.lineTo(esx+Math.cos(fa)*ir2*0.92,esy+Math.sin(fa)*ir2*0.92);
+        c.strokeStyle=fc;c.lineWidth=1;c.stroke();
+      }
+      c.beginPath();c.ellipse(esx,esy,pr,ph,0,0,Math.PI*2);c.fillStyle=PUPIL;c.fill();
+      c.beginPath();c.ellipse(esx-pr/2,esy-ph*0.5,pr/2,ph*0.2,0,0,Math.PI*2);
+      c.fillStyle='#dcb464';c.fill();
+    }]);
+  }
+
+  // mouth
+  if(mo>0.02){
+    const ms=mo*0.82;
+    items.push([9999,()=>drawMouthTorus(esx,esy,ms,mouthRot)]);
+  }
+
+  items.sort((a,b)=>b[0]-a[0]);
+  for(const [,fn] of items)fn();
+
+  // ink
+  for(const p of octo.ink){
+    const r=Math.max(1,~~p[5]);
+    c.beginPath();c.ellipse(p[0],p[1],r,r,0,0,Math.PI*2);c.fillStyle=p[6];c.fill();
+  }
+
+
+}
+
+tick();
+</script>
+</body>
+</html>
